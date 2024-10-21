@@ -21,15 +21,13 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import {
-  generateQuestions,
-  generateTranscript,
-} from "@/server/actions/generate-questions";
+import { generateQuestions, generateTranscript } from "@/server/services/video";
+import { GenerateTranscriptReqSchema } from "@/server/schemas";
 
-const fetchQuestions = async (youtubeLink: string): Promise<string[]> => {
+const fetchQuestions = async (url: string): Promise<string[]> => {
   const {
     data: { id, transcript },
-  } = await generateTranscript(youtubeLink);
+  } = await generateTranscript({ url });
 
   const {
     data: { questions },
@@ -43,19 +41,11 @@ const fetchQuestions = async (youtubeLink: string): Promise<string[]> => {
   return fetchedQuestions;
 };
 
-const youtubeLinkSchema = z.object({
-  youtubeLink: z
-    .string()
-    .url("Please enter a valid URL")
-    .regex(
-      /^(https?\:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/,
-      "Please enter a valid YouTube URL",
-    ),
-});
-
 const answerSchema = z.object({
   answer: z.string().min(1, "Please fill in the answer 🥺."),
 });
+
+export const runtime = "edge";
 
 const Page = () => {
   const [questions, setQuestions] = useState<string[]>([]);
@@ -63,10 +53,10 @@ const Page = () => {
   const [answers, setAnswers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const linkForm = useForm<z.infer<typeof youtubeLinkSchema>>({
-    resolver: zodResolver(youtubeLinkSchema),
+  const linkForm = useForm<z.infer<typeof GenerateTranscriptReqSchema>>({
+    resolver: zodResolver(GenerateTranscriptReqSchema),
     defaultValues: {
-      youtubeLink: "",
+      url: "",
     },
   });
 
@@ -77,16 +67,18 @@ const Page = () => {
     },
   });
 
-  const onSubmitLink = async (values: z.infer<typeof youtubeLinkSchema>) => {
+  const onSubmitLink = async (
+    values: z.infer<typeof GenerateTranscriptReqSchema>,
+  ) => {
     setIsLoading(true);
     try {
-      const fetchedQuestions = await fetchQuestions(values.youtubeLink);
+      const fetchedQuestions = await fetchQuestions(values.url);
       setQuestions(fetchedQuestions);
       setAnswers(new Array(fetchedQuestions.length).fill(""));
       setCurrentQuestionIndex(0);
     } catch (error) {
       console.error(error); // Use console.error instead of console.log
-      linkForm.setError("youtubeLink", {
+      linkForm.setError("url", {
         message: "Something went wrong 😟",
       });
     } finally {
@@ -131,7 +123,7 @@ const Page = () => {
               >
                 <FormField
                   control={linkForm.control}
-                  name="youtubeLink"
+                  name="url"
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
