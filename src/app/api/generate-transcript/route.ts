@@ -17,5 +17,5 @@ export async function POST(req: Request) {
     },
   );
 
-  return { data: res.data };
+  return Response.json({ data: res.data });
 }
